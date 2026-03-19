@@ -277,6 +277,53 @@ w szczególności dokumenty: `10_modyf_ora_north.pdf`, `20_ora_plsql_north.pdf`
 ```sql
 
 -- przyklady, kod, zrzuty ekranów, komentarz ...
+-- transkacja dla  MS Sqlserver T-SQL 
+-- zachowujac zasady ACID w momencie bledu w transakcji wykonuje się ROLLBACK i wszystkie update-y sie cofaja
+BEGIN;
+
+INSERT INTO reservation (reservation_id, trip_id, person_id, status)
+VALUES (1, 10, 5);
+
+INSERT INTO log (log_id, reservation_id, log_date, status)
+VALUES (1, 1, CURRENT_DATE, 'N');
+
+COMMIT;
+
+-- Dla Oracle nie piszemy BEGIN on sam wykrywa poczatek transakcji i jedynie COMMIT na koncu mówi o wykonaniu całości transakcji np:
+
+
+UPDATE person SET lastname = lastname + 'Kowalski' WHERE person_id = 5
+
+UPDATE person SET lastname = lastname + 'Kowalska' WHERE person_id = 10
+
+COMMIT
+
+
+-- W przypadku ROLLBACKOW jesli przykladowo tworzymy nowa tabele Busses to w Oracle po stworzeniu jej i wykonaniu ROLLBACK nie zmieni nic - tabela powstanie a rollback sie nie wykona ponieważ COMMIT zrobi się automatycznie
+
+create table Busses
+(
+    bus_id int not null
+         constraint pk_bus
+         primary key,
+    bus_size int not null,
+);
+rollback
+
+-- dla MS Sqlserver T-SQL powstaje tabela a po wykonaniu rollbacku zostaje ona usunieta
+begin 
+create table Busses
+(
+    bus_id int not null
+         constraint pk_bus
+         primary key,
+    bus_size int not null,
+);
+rollback
+
+
+-- dla Oracle po pojawieniu się błędu pomimo tego dalej mamy mozliwocs wykonania rollbacku albo commita 
+
 
 ```
 
