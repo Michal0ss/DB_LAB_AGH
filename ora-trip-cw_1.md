@@ -322,8 +322,24 @@ create table Busses
 rollback
 
 
--- dla Oracle po pojawieniu się błędu pomimo tego dalej mamy mozliwocs wykonania rollbacku albo commita 
+-- dla Oracle po pojawieniu się błędu pomimo tego dalej mamy mozliwość wykonania rollbacku albo commita 
 
+INSERT INTO reservation VALUES (1, 10, 5, 'N');
+
+    -- błąd (np. zły typ danych)
+INSERT INTO reservation VALUES ('abc', 10, 5, 'N');
+
+COMMIT;
+
+-- dla T-SQL  błąd zatrzymuje instrukcję ale transakcja dalej istnieje
+BEGIN TRAN;
+
+INSERT INTO reservation VALUES (1, 10, 5, 'N');
+
+-- błąd
+INSERT INTO reservation VALUES ('abc', 10, 5, 'N');
+
+COMMIT;
 
 ```
 
