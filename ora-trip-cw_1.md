@@ -797,10 +797,6 @@ create or replace trigger tr_add_reservation
 
 
 
-
-
-
-
 create procedure p_modify_reservation_status_4(vreservation_id number, vstatus char)
 as
 	valid_reservation number;
@@ -833,18 +829,15 @@ end;
 
 
 
-create or replace trigger tr_modify_reservation_status
-	after update
-	on reservation
-  for each row
-	begin
-		insert into log(reservation_id, log_date, status)
-		values (:NEW.reservation_id, sysdate, :NEW.status);
-	end;
+create or replace trigger tr_modify_reservation_status 
+after update on reservation for each row
+begin
+	insert into log(reservation_id, log_date, status)
+	values (:NEW.reservation_id, sysdate, :NEW.status);
+end;
 
 create or replace trigger delete_reservation_block
-before delete on resevation 
-for each row 
+before delete on resevation for each row 
 begin
 	RAISE_APPLICATION_ERROR(-20001, 'Nie mozna usuwac rezerwacji!');
 end;
