@@ -744,9 +744,6 @@ Należy przygotować procedury: `p_add_reservation_4`, `p_modify_reservation_sta
 # Zadanie 4 - rozwiązanie
 
 ```sql
-
--- wyniki, kod, zrzuty ekranów, komentarz ...
-
 create procedure p_add_reservation_4(vtrip_id number, vperson_id number)
 as
 	validtrip          number;
@@ -845,6 +842,12 @@ create or replace trigger tr_modify_reservation_status
 		values (:NEW.reservation_id, sysdate, :NEW.status);
 	end;
 
+create or replace trigger delete_reservation_block
+before delete on resevation 
+for each row 
+begin
+	RAISE_APPLICATION_ERROR(-20001, 'Nie mozna usuwac rezerwacji!');
+end;
 
 
 
@@ -874,8 +877,6 @@ Należy przygotować procedury: `p_add_reservation_5`, `p_modify_reservation_sta
 # Zadanie 5 - rozwiązanie
 
 ```sql
-
--- wyniki, kod, zrzuty ekranów, komentarz ...
 create procedure p_add_reservation_5(vtrip_id number, vperson_id number)
 as
 	validtrip          number;
