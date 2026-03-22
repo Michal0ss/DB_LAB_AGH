@@ -950,10 +950,35 @@ create or replace trigger tr_modify_reservation_status_available
 
 Porównaj sposób programowania w systemie Oracle PL/SQL ze znanym ci systemem/językiem MS Sqlserver T-SQL
 
-```sql
+## Podsumowanie – Oracle PL/SQL vs MS SQL Server T-SQL
+## 1. Podejście do programowania
+- **PL/SQL (Oracle)** – rozbudowany język programowania w bazie (logika biznesowa, typy, kolekcje)
+- **T-SQL (SQL Server)** – prostszy, bardziej skupiony na operacjach na danych
 
--- komentarz ...
+## 2. Transakcje
+- **Oracle** – transakcje automatyczne, kończone przez `COMMIT` / `ROLLBACK`, DDL = automatyczny commit
+- **T-SQL** – transakcje jawne (`BEGIN TRAN`), DDL można cofnąć
 
+## 3. Obsługa błędów
+- **Oracle** – `raise_application_error`, `EXCEPTION`
+- **T-SQL** – `TRY...CATCH`
 
+## 4. Funkcje i typy
+- **Oracle** – własne typy i kolekcje (zwracanie tabel)
+- **T-SQL** – funkcje tabelaryczne, mniej elastyczne
 
-```
+## 5. Procedury
+- **Oracle** – bardziej rozbudowane, zawierają logikę i walidację
+- **T-SQL** – prostsze, głównie operacje na danych
+
+## 6. Triggery
+- **Oracle** – poziom rekordu (`:NEW`, `:OLD`)
+- **T-SQL** – poziom zbioru (`INSERTED`, `DELETED`)
+
+## 7. Klucze główne
+- **Oracle** – `SEQUENCE`
+- **T-SQL** – `IDENTITY`
+
+## Wniosek
+- **Oracle PL/SQL** – lepszy do złożonej logiki w bazie  
+- **T-SQL** – prostszy i czytelniejszy do pracy z danymi
