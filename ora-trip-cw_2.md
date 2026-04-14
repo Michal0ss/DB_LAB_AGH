@@ -56,8 +56,17 @@ alter table trip add
 # Zadanie 6 - rozwiązanie
 
 ```sql
+create or replace view vw_trip_6 as
+select t.trip_id,
+	   t.country,
+	   t.trip_date,
+	   t.trip_name,
+	   t.max_no_places,
+	   t.no_available_places as places_left
+from trip t
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+create view vw_available_trip_6 as
+	select * from vw_trip_6 where vw_trip_6.trip_date >= current_date and vw_trip_6.places_left > 0
 
 ```
 
