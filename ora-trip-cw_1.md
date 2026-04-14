@@ -5,7 +5,7 @@ widoki, funkcje, procedury, triggery
 
 ---
 
-Imiona i nazwiska autorów :
+Imiona i nazwiska autorów : Michał Białas, Jakub Turek
 
 ---
 
@@ -982,3 +982,6 @@ Porównaj sposób programowania w systemie Oracle PL/SQL ze znanym ci systemem/j
 ## Wniosek
 - **Oracle PL/SQL** – lepszy do złożonej logiki w bazie  
 - **T-SQL** – prostszy i czytelniejszy do pracy z danymi
+
+
+# Zadanie 6 - rozwiązanie
