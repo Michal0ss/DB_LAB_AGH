@@ -509,7 +509,7 @@ begin
 	from person
 	where person_id = target_person_id;
 
-	if valid = 0 then
+	if valid <= 0 then
 		raise_application_error(-20001, 'no participant found');
 	end if;
 
@@ -837,7 +837,7 @@ begin
 end;
 
 create or replace trigger delete_reservation_block
-before delete on resevation for each row
+before delete on reservation for each row
 begin
 	RAISE_APPLICATION_ERROR(-20001, 'Nie mozna usuwac rezerwacji!');
 end;
@@ -991,5 +991,3 @@ Porównaj sposób programowania w systemie Oracle PL/SQL ze znanym ci systemem/j
 
 - **Oracle PL/SQL** – lepszy do złożonej logiki w bazie
 - **T-SQL** – prostszy i czytelniejszy do pracy z danymi
-
-# Zadanie 6 - rozwiązanie
