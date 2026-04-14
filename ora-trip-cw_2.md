@@ -8,7 +8,7 @@ widoki, funkcje, procedury, triggery
 
 ---
 
-Imiona i nazwiska autorów : Michał Białas Jakub Turek
+Imiona i nazwiska autorów : Jakub Turek, Michał Białas
 
 ---
 
@@ -102,7 +102,52 @@ Obsługę pola `no_available_places` należy zrealizować przy pomocy triggerów
 # Zadanie 6b - rozwiązanie
 
 ```sql
+create trigger tr_check_avaliable_6b
+	before insert
+	on reservation
+	for each row
+declare
+		noplaces int;
+	begin
+		select NO_AVAILABLE_PLACES
+		into noplaces from trip
+		where :NEW.trip_id = trip_id;
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+		if noplaces = 0 then
+			raise_application_error(-20001, 'trip not avaliable');
+		end if;
+
+		update trip set no_available_places = no_available_places - 1 where :NEW.trip_id = trip_id;
+	end;
+/
+
+
+
+create trigger tr_modify_reservation_status_6b
+	before update
+	on reservation
+	for each row
+declare
+	noplaces int;
+begin
+	select no_available_places
+	into noplaces
+	from trip
+	where :NEW.trip_id = trip_id;
+
+	if :NEW.status = 'C' and :OLD.status <> 'C' then
+		update trip set no_available_places = no_available_places + 1 where :NEW.trip_id = trip_id;
+	elsif :NEW.status = 'N' and :OLD.status <> 'N' then
+		if noplaces = 0 then
+			raise_application_error(-20001, 'trip not avaliable');
+		else
+			update trip set no_available_places = no_available_places - 1 where :NEW.trip_id = trip_id;
+		end if;
+
+	end if;
+end;
+/
+
+Procedury dodawania i modyfikacji są takie same jak w zadaniu nr 5
 
 ```

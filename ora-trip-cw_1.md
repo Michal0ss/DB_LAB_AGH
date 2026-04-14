@@ -277,7 +277,7 @@ w szczególności dokumenty: `10_modyf_ora_north.pdf`, `20_ora_plsql_north.pdf`
 ```sql
 
 -- przyklady, kod, zrzuty ekranów, komentarz ...
--- transkacja dla  MS Sqlserver T-SQL 
+-- transkacja dla  MS Sqlserver T-SQL
 -- zachowujac zasady ACID w momencie bledu w transakcji wykonuje się ROLLBACK i wszystkie update-y sie cofaja
 BEGIN;
 
@@ -311,7 +311,7 @@ create table Busses
 rollback
 
 -- dla MS Sqlserver T-SQL powstaje tabela a po wykonaniu rollbacku zostaje ona usunieta
-begin 
+begin
 create table Busses
 (
     bus_id int not null
@@ -322,7 +322,7 @@ create table Busses
 rollback
 
 
--- dla Oracle po pojawieniu się błędu pomimo tego dalej mamy mozliwość wykonania rollbacku albo commita 
+-- dla Oracle po pojawieniu się błędu pomimo tego dalej mamy mozliwość wykonania rollbacku albo commita
 
 INSERT INTO reservation VALUES (1, 10, 5, 'N');
 
@@ -410,7 +410,7 @@ create view vw_trip as
 
 
 create view vw_available_trip as
-	select * from vw_trip where vw_trip.trip_date >= current_date
+	select * from vw_trip where vw_trip.trip_date >= current_date and vw_trip.places_left > 0
 ```
 
 ---
@@ -829,7 +829,7 @@ end;
 
 
 
-create or replace trigger tr_modify_reservation_status 
+create or replace trigger tr_modify_reservation_status
 after update on reservation for each row
 begin
 	insert into log(reservation_id, log_date, status)
@@ -837,7 +837,7 @@ begin
 end;
 
 create or replace trigger delete_reservation_block
-before delete on resevation for each row 
+before delete on resevation for each row
 begin
 	RAISE_APPLICATION_ERROR(-20001, 'Nie mozna usuwac rezerwacji!');
 end;
@@ -951,37 +951,45 @@ create or replace trigger tr_modify_reservation_status_available
 Porównaj sposób programowania w systemie Oracle PL/SQL ze znanym ci systemem/językiem MS Sqlserver T-SQL
 
 ## Podsumowanie – Oracle PL/SQL vs MS SQL Server T-SQL
+
 ## 1. Podejście do programowania
+
 - **PL/SQL (Oracle)** – rozbudowany język programowania w bazie (logika biznesowa, typy, kolekcje)
 - **T-SQL (SQL Server)** – prostszy, bardziej skupiony na operacjach na danych
 
 ## 2. Transakcje
+
 - **Oracle** – transakcje automatyczne, kończone przez `COMMIT` / `ROLLBACK`, DDL = automatyczny commit
 - **T-SQL** – transakcje jawne (`BEGIN TRAN`), DDL można cofnąć
 
 ## 3. Obsługa błędów
+
 - **Oracle** – `raise_application_error`, `EXCEPTION`
 - **T-SQL** – `TRY...CATCH`
 
 ## 4. Funkcje i typy
+
 - **Oracle** – własne typy i kolekcje (zwracanie tabel)
 - **T-SQL** – funkcje tabelaryczne, mniej elastyczne
 
 ## 5. Procedury
+
 - **Oracle** – bardziej rozbudowane, zawierają logikę i walidację
 - **T-SQL** – prostsze, głównie operacje na danych
 
 ## 6. Triggery
+
 - **Oracle** – poziom rekordu (`:NEW`, `:OLD`)
 - **T-SQL** – poziom zbioru (`INSERTED`, `DELETED`)
 
 ## 7. Klucze główne
+
 - **Oracle** – `SEQUENCE`
 - **T-SQL** – `IDENTITY`
 
 ## Wniosek
-- **Oracle PL/SQL** – lepszy do złożonej logiki w bazie  
-- **T-SQL** – prostszy i czytelniejszy do pracy z danymi
 
+- **Oracle PL/SQL** – lepszy do złożonej logiki w bazie
+- **T-SQL** – prostszy i czytelniejszy do pracy z danymi
 
 # Zadanie 6 - rozwiązanie
