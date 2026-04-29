@@ -2915,5 +2915,62 @@ TotalOrderValue : ...
 > przykłady, kod, zrzuty ekranów, komentarz ...
 
 ```js
---  ...
+use north0;
+
+db.orders_tmp.aggregate([
+  {
+    $addFields: {
+      Shippment: {
+        ShipAddress: "$ShipAddress",
+        ShipCity: "$ShipCity",
+        ShipCountry: "$ShipCountry",
+        ShipName: "$ShipName",
+        ShipPostalCode: "$ShipPostalCode",
+        ShipRegion: "$ShipRegion"
+      },
+
+      Dates: {
+        OrderDate: "$OrderDate",
+        RequiredDate: "$RequiredDate",
+        ShippedDate: "$ShippedDate"
+      },
+
+      TotalOrderValue: {
+        $round: [
+          { $sum: "$Orderdetails.TotalValue" },
+          2
+        ]
+      }
+    }
+  },
+  {
+    $project: {
+      ShipAddress: 0,
+      ShipCity: 0,
+      ShipCountry: 0,
+      ShipName: 0,
+      ShipPostalCode: 0,
+      ShipRegion: 0,
+
+      OrderDate: 0,
+      RequiredDate: 0,
+      ShippedDate: 0
+    }
+  },
+  {
+    $out: "orders_tmp"
+  }
+]);
 ```
+
+Sprawdzenie wyników: 
+```js
+db.orders_tmp.find().limit(2);
+```
+W zadaniu zmieniono strukturę dokumentów w kolekcji `orders_tmp`.
+Pola związane z adresem wysyłki zostały zgrupowane w obiekcie `Shippment`,
+a pola związane z datami w obiekcie `Dates`.
+
+Dodatkowo dodano pole `TotalOrderValue`, które przechowuje pełną wartość zamówienia.
+Wartość ta jest obliczana jako suma pól `TotalValue` ze wszystkich pozycji zamówienia
+znajdujących się w tablicy `Orderdetails`.

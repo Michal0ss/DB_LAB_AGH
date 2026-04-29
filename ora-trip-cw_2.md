@@ -224,7 +224,7 @@ begin
 		update trip
 		set no_available_places = no_available_places - 1
 		where trip_id = vtrip_id;
-	elsif current_status in ('N', 'P') and vstatus = 'C' then
+		elsif current_status in ('N', 'P') and vstatus = 'C' then
 		update trip
 		set no_available_places = no_available_places + 1
 		where trip_id = vtrip_id;
@@ -388,9 +388,11 @@ begin
 	end if;
 
 	select count(*) into valid_trip from trip where trip_id = vtrip_id;
-	if valid_trip = 0 then
+	if valid_trip > 0 then
 		raise_application_error(-20001, 'trip not found');
 	end if;
+
+
 
 	update trip set max_no_places = vmax_no_places where trip_id = vtrip_id;
 end;
