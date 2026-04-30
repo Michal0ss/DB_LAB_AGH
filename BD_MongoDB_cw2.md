@@ -236,7 +236,41 @@ b)
 
 
 ```js
---  ...
+
+db.customers.aggregate(
+    {
+        $lookup: {
+            from: "orders",
+            localField: "OrderID",
+            foreignField: "OrderID",
+            as: "Orders"
+        }
+    },
+    {
+        $project: {
+            CustomerID: 1,
+            CompanyName: 1,
+            City: 1,
+            Country: 1,
+            Orders: {
+                OrderID: 1,
+                OrderDate: 1,
+                ShipCity: 1,
+                ShipCountry: 1
+                }
+            }
+    },
+    {
+        $out: "CustomerInfo"
+    }
+)
+
+```
+c)
+
+```js
+
+
 ```
 
 ....
