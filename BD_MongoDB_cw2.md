@@ -235,8 +235,7 @@ db.orders.aggregate([
       as: "customer_info",
     },
   },
-  { $unwind: "$customer_info" },
-
+  { $set: { customer_info: { $arrayElemAt: ["$customer_info", 0] } } },
   {
     $lookup: {
       from: "employees",
@@ -245,42 +244,44 @@ db.orders.aggregate([
       as: "employee_info",
     },
   },
-  { $unwind: "$employee_info" },
-
+  { $set: { employee_info: { $arrayElemAt: ["$employee_info", 0] } } },
   {
     $lookup: {
       from: "orderdetails",
       localField: "OrderID",
       foreignField: "OrderID",
       as: "order_info",
+      pipeline: [
+        {
+          $lookup: {
+            from: "products",
+            localField: "ProductID",
+            foreignField: "ProductID",
+            as: "product_info",
+          },
+        },
+        { $set: { product_info: { $arrayElemAt: ["$product_info", 0] } } },
+        {
+          $lookup: {
+            from: "categories",
+            localField: "product_info.CategoryID",
+            foreignField: "CategoryID",
+            as: "category_info",
+          },
+        },
+        { $set: { category_info: { $arrayElemAt: ["$category_info", 0] } } },
+      ],
     },
   },
-  { $unwind: "$order_info" },
-
-  {
-    $lookup: {
-      from: "products",
-      localField: "ProductID",
-      foreignField: "ProductID",
-      as: "product_info",
-    },
-  },
-  { $unwind: "$product_info" },
-
-  {
-    $lookup: {
-      from: "categories",
-      localField: "product_info.CategoryID",
-      foreignField: "CategoryID",
-      as: "category_info",
-    },
-  },
-  { $unwind: "$category_info" },
-
   {
     $project: {
       _id: 0,
       OrderID: 1,
+      Freight: 1,
+      Dates: {
+        OrderDate: "$OrderDate",
+        RequiredDate: "$RequiredDate",
+      },
       Customer: {
         CustomerID: "$customer_info.CustomerID",
         CompanyName: "$customer_info.CompanyName",
@@ -293,32 +294,31 @@ db.orders.aggregate([
         LastName: "$employee_info.LastName",
         Title: "$employee_info.Title",
       },
-      Dates: {
-        OrderDate: "$OrderDate",
-        RequiredDate: "RequiredDate",
-      },
-      Orderdetails: [
-        {
-          UnitPrice: "$order_info.UnitPrice",
-          Quantity: "$order_info.Quantity",
-          Discount: "$order_info.Discount",
-          Value: {
-            $multiply: [
-              "$order_info.UnitPrice",
-              "$order_info.Quantity",
-              { $subtract: [1, "$order_info.Discount"] },
-            ],
-          },
-          product: {
-            ProductID: "$ProductID",
-            ProductName: "$product_info.ProductName",
-            QuantityPerUnit: "$product_info.QuantityPerUnit",
-            CategoryID: "$product_info.CategoryID",
-            CategoryName: "$category_info.CategoryName",
+      Orderdetails: {
+        $map: {
+          input: "$order_info",
+          as: "detail",
+          in: {
+            UnitPrice: "$$detail.UnitPrice",
+            Quantity: "$$detail.Quantity",
+            Discount: "$$detail.Discount",
+            Value: {
+              $multiply: [
+                "$$detail.UnitPrice",
+                "$$detail.Quantity",
+                { $subtract: [1, "$$detail.Discount"] },
+              ],
+            },
+            product: {
+              ProductID: "$$detail.ProductID",
+              ProductName: "$$detail.product_info.ProductName",
+              QuantityPerUnit: "$$detail.product_info.QuantityPerUnit",
+              CategoryID: "$$detail.product_info.CategoryID",
+              CategoryName: "$$detail.category_info.CategoryName",
+            },
           },
         },
-      ],
-      Freight: 1,
+      },
     },
   },
 ]);
