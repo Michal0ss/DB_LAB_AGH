@@ -443,7 +443,7 @@ db.orders.aggregate([
       "ShipCity": "Reims",
       "ShipCountry": "France"
     }
-  } ...
+  }] ...
 ```
 
 b)
@@ -789,7 +789,7 @@ db.CustomerInfo.aggregate([
     "CompanyName": "Old World Delicatessen",
     "ConfectionsSale97": 2758.375,
     "CustomerID": "OLDWO"
-  },
+  },]
 ```
 
 d)
@@ -999,7 +999,7 @@ db.CustomerInfo.aggregate([
         "Total": 2341.3639920023084
       }
     ]
-  },
+  },]
   ...
 ```
 
@@ -1557,9 +1557,6 @@ db.CustomerInfo.updateOne({ CustomerID: "ALFKI" }, [
 ]
 ```
 
-````
-
-....
 
 # Zadanie 2 - modelowanie danych
 
@@ -1605,13 +1602,513 @@ Do sprawozdania należy dołączyć
 - oraz kompletny zrzut wykonanych/przygotowanych baz danych (taki zrzut można wykonać np. za pomocą poleceń `mongoexport`, `mongdump` …)
   - załącznik ze zrzutem baz powinien mieć format zip
 
-## Zadanie 2 - rozwiązanie
 
-> Wyniki:
->
-> przykłady, kod, zrzuty ekranów, komentarz ...
+## 1. Opis problemu
 
-```js
---  ...
+Wybrany problem dotyczy systemu obsługi siłowni. W systemie występują klienci, trenerzy, zajęcia grupowe, karnety, rezerwacje miejsc oraz oceny zajęć.
+
+Założenia:
+
+- klient może kupować karnety,
+- trener prowadzi wiele zajęć,
+- klient może rezerwować miejsce na zajęciach,
+- zajęcia mają limit miejsc,
+- klient może oceniać zajęcia oraz trenera,
+- część danych jest przechowywana jako referencje, część jako dokumenty zagnieżdżone, a część jako tablice.
+
+Najważniejsze encje:
+
+- `clients` - klienci siłowni,
+- `trainers` - trenerzy,
+- `classes` - zajęcia grupowe,
+- `memberships` - karnety,
+- `reservations` - rezerwacje miejsc,
+- `reviews` - oceny.
+
+## 2. Warianty struktury bazy danych
+
+### Wariant 1: model referencyjny
+
+W tym wariancie każda główna encja znajduje się w osobnej kolekcji. Dokumenty przechowują identyfikatory innych dokumentów, np. `clientId`, `trainerId`, `classId`.
+
+Kolekcje:
+
+```text
+clients
+trainers
+classes
+memberships
+reservations
+reviews
 ```
-````
+
+Przykładowy dokument `clients`:
+
+```json
+{
+  "_id": "client_001",
+  "firstName": "Jan",
+  "lastName": "Kowalski",
+  "email": "jan.kowalski@example.com",
+  "phone": "500600700",
+  "dateOfBirth": "1998-04-12",
+  "city": "Warszawa",
+  "createdAt": "2026-05-01T10:00:00Z"
+}
+```
+
+Przykładowy dokument `classes`:
+
+```json
+{
+  "_id": "class_001",
+  "name": "Trening funkcjonalny",
+  "trainerId": "trainer_001",
+  "room": "Sala A",
+  "capacity": 15,
+  "level": "beginner",
+  "dayOfWeek": "Monday",
+  "startTime": "18:00",
+  "durationMinutes": 60,
+  "active": true
+}
+```
+
+Przykładowy dokument `reservations`:
+
+```json
+{
+  "_id": "reservation_001",
+  "clientId": "client_001",
+  "classId": "class_001",
+  "membershipId": "membership_001",
+  "status": "confirmed",
+  "reservedAt": "2026-05-12T14:30:00Z"
+}
+```
+
+Zalety:
+
+- mała duplikacja danych,
+- łatwa aktualizacja danych klienta, trenera lub zajęć,
+- dobra struktura dla dużej liczby rezerwacji i ocen,
+- dane są dobrze znormalizowane.
+
+Wady:
+
+- częste zapytania wymagają łączenia danych przez `$lookup`,
+- odczyt pełnych informacji o rezerwacji jest bardziej złożony,
+- więcej kolekcji oznacza więcej operacji przy pobieraniu danych.
+
+Ten wariant jest dobry, gdy system ma dużą liczbę klientów, rezerwacji i ocen, a najważniejsza jest spójność danych.
+
+### Wariant 2: model zagnieżdżony
+
+W tym wariancie dokument zajęć zawiera dane trenera, uczestników i oceny. Odczyt informacji o zajęciach jest bardzo szybki, bo większość danych znajduje się w jednym dokumencie.
+
+Kolekcje:
+
+```text
+classes
+clients
+memberships
+```
+
+Przykładowy dokument `classes`:
+
+```json
+{
+  "_id": "class_001",
+  "name": "Trening funkcjonalny",
+  "description": "Zajęcia wzmacniające całe ciało.",
+  "trainer": {
+    "trainerId": "trainer_001",
+    "firstName": "Anna",
+    "lastName": "Nowak",
+    "specializations": ["functional_training", "mobility"]
+  },
+  "room": "Sala A",
+  "capacity": 15,
+  "schedule": {
+    "dayOfWeek": "Monday",
+    "startTime": "18:00",
+    "durationMinutes": 60
+  },
+  "participants": [
+    {
+      "clientId": "client_001",
+      "firstName": "Jan",
+      "lastName": "Kowalski",
+      "reservationStatus": "confirmed",
+      "checkedIn": true
+    }
+  ],
+  "reviews": [
+    {
+      "clientId": "client_001",
+      "rating": 5,
+      "comment": "Bardzo dobre tempo zajęć.",
+      "createdAt": "2026-05-13T20:10:00Z"
+    }
+  ],
+  "tags": ["strength", "mobility", "beginner"],
+  "active": true
+}
+```
+
+Zalety:
+
+- szybki odczyt pełnego widoku zajęć,
+- mniej zapytań do bazy,
+- naturalna struktura dla danych wyświetlanych razem, np. szczegóły zajęć z uczestnikami i ocenami.
+
+Wady:
+
+- duplikacja danych klienta i trenera,
+- trudniejsza aktualizacja, np. zmiana nazwiska klienta wymaga aktualizacji wielu dokumentów,
+- dokument zajęć może stać się bardzo duży,
+- gorszy wariant dla zajęć z bardzo dużą liczbą uczestników lub ocen.
+
+Ten wariant jest dobry, gdy system często pokazuje szczegóły pojedynczych zajęć, a liczba uczestników jest ograniczona.
+
+### Wariant 3: model mieszany
+
+To wariant wybrany jako docelowy. Najważniejsze obiekty są w osobnych kolekcjach, ale dane naturalnie należące do jednego obiektu są zagnieżdżane.
+
+Kolekcje:
+
+```text
+clients
+trainers
+classes
+memberships
+reservations
+reviews
+```
+
+Przykładowy dokument `clients`:
+
+```json
+{
+  "_id": "client_001",
+  "firstName": "Jan",
+  "lastName": "Kowalski",
+  "email": "jan.kowalski@example.com",
+  "phone": "500600700",
+  "dateOfBirth": "1998-04-12",
+  "contact": {
+    "city": "Warszawa",
+    "street": "Sportowa 12",
+    "postalCode": "00-001"
+  },
+  "preferences": ["strength", "functional", "evening_classes"],
+  "createdAt": "2026-05-01T10:00:00Z"
+}
+```
+
+Przykładowy dokument `classes`:
+
+```json
+{
+  "_id": "class_001",
+  "name": "Trening funkcjonalny",
+  "description": "Zajęcia wzmacniające całe ciało.",
+  "trainerId": "trainer_001",
+  "trainerName": "Anna Nowak",
+  "room": "Sala A",
+  "capacity": 15,
+  "level": "beginner",
+  "schedule": {
+    "dayOfWeek": "Monday",
+    "startTime": "18:00",
+    "durationMinutes": 60
+  },
+  "tags": ["strength", "mobility", "beginner"],
+  "active": true
+}
+```
+
+Przykładowy dokument `reservations`:
+
+```json
+{
+  "_id": "reservation_001",
+  "clientId": "client_001",
+  "classId": "class_001",
+  "membershipId": "membership_001",
+  "status": "confirmed",
+  "reservedAt": "2026-05-12T14:30:00Z",
+  "attendance": {
+    "checkedIn": true,
+    "checkedInAt": "2026-05-13T17:55:00Z"
+  }
+}
+```
+
+Zalety:
+
+- dobry kompromis między szybkością odczytu a spójnością danych,
+- rezerwacje i oceny są w osobnych kolekcjach, więc mogą rosnąć bez powiększania dokumentu zajęć,
+- dokumenty nadal korzystają z zalet MongoDB: zagnieżdżone obiekty i tablice,
+- można łatwo pobrać listę zajęć bez każdorazowego pobierania pełnego dokumentu trenera, ponieważ w `classes` znajduje się `trainerName`.
+
+Wady:
+
+- występuje częściowa duplikacja danych, np. `trainerName`,
+- niektóre zapytania nadal wymagają `$lookup`,
+- trzeba pilnować aktualizacji pól będących snapshotami, np. nazwiska trenera.
+
+Ten wariant jest najlepszy dla praktycznego systemu siłowni, ponieważ rezerwacje i oceny mogą mieć dużą liczbę dokumentów, ale typowe widoki aplikacji nadal są wygodne do odczytu.
+
+## 3. Reguły walidacji danych
+
+Poniżej znajduje się przykład walidacji dla kolekcji w wariancie mieszanym. Walidacja używa `$jsonSchema`.
+
+Przykład dla kolekcji `clients`:
+
+```javascript
+db.createCollection("clients", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["_id", "firstName", "lastName", "email", "phone", "contact", "preferences", "createdAt"],
+      properties: {
+        _id: { bsonType: "string" },
+        firstName: { bsonType: "string" },
+        lastName: { bsonType: "string" },
+        email: { bsonType: "string", pattern: "^.+@.+\\..+$" },
+        phone: { bsonType: "string" },
+        dateOfBirth: { bsonType: "string" },
+        contact: {
+          bsonType: "object",
+          required: ["city", "street", "postalCode"],
+          properties: {
+            city: { bsonType: "string" },
+            street: { bsonType: "string" },
+            postalCode: { bsonType: "string" }
+          }
+        },
+        preferences: {
+          bsonType: "array",
+          items: { bsonType: "string" }
+        },
+        createdAt: { bsonType: "date" }
+      }
+    }
+  }
+});
+```
+
+Pełne reguły walidacji znajdują się w pliku `silownia_mongodb.js`.
+
+## 4. Przykładowe dane
+
+Przykładowe dane dla kolekcji `clients`:
+
+```json
+[
+  {
+    "_id": "client_001",
+    "firstName": "Jan",
+    "lastName": "Kowalski",
+    "email": "jan.kowalski@example.com",
+    "phone": "500600700",
+    "dateOfBirth": "1998-04-12",
+    "contact": {
+      "city": "Warszawa",
+      "street": "Sportowa 12",
+      "postalCode": "00-001"
+    },
+    "preferences": ["strength", "functional", "evening_classes"],
+    "createdAt": "2026-05-01T10:00:00Z"
+  },
+  {
+    "_id": "client_002",
+    "firstName": "Marta",
+    "lastName": "Zielinska",
+    "email": "marta.zielinska@example.com",
+    "phone": "501222333",
+    "dateOfBirth": "1995-09-03",
+    "contact": {
+      "city": "Warszawa",
+      "street": "Aktywna 8",
+      "postalCode": "00-120"
+    },
+    "preferences": ["pilates", "morning_classes"],
+    "createdAt": "2026-05-02T11:30:00Z"
+  }
+]
+```
+
+Przykładowe dane dla kolekcji `classes`:
+
+```json
+[
+  {
+    "_id": "class_001",
+    "name": "Trening funkcjonalny",
+    "description": "Zajęcia wzmacniające całe ciało.",
+    "trainerId": "trainer_001",
+    "trainerName": "Anna Nowak",
+    "room": "Sala A",
+    "capacity": 15,
+    "level": "beginner",
+    "schedule": {
+      "dayOfWeek": "Monday",
+      "startTime": "18:00",
+      "durationMinutes": 60
+    },
+    "tags": ["strength", "mobility", "beginner"],
+    "active": true
+  }
+]
+```
+
+Pełne dane znajdują się w pliku `silownia_mongodb.js` oraz w katalogu `export_silownia_json`.
+
+## 5. Przykładowe zapytania i operacje
+
+### 5.1. Wariant referencyjny: pełna lista rezerwacji z danymi klienta i zajęć
+
+To zapytanie jest typowe dla modelu referencyjnego. Dane są rozdzielone między kolekcje, więc trzeba użyć `$lookup`.
+
+```javascript
+db.reservations.aggregate([
+  {
+    $lookup: {
+      from: "clients",
+      localField: "clientId",
+      foreignField: "_id",
+      as: "client"
+    }
+  },
+  { $unwind: "$client" },
+  {
+    $lookup: {
+      from: "classes",
+      localField: "classId",
+      foreignField: "_id",
+      as: "class"
+    }
+  },
+  { $unwind: "$class" },
+  {
+    $project: {
+      _id: 0,
+      reservationId: "$_id",
+      status: 1,
+      clientName: { $concat: ["$client.firstName", " ", "$client.lastName"] },
+      className: "$class.name",
+      classTime: "$class.schedule.startTime"
+    }
+  }
+]);
+```
+
+Komentarz: zapytanie pokazuje wadę modelu referencyjnego, czyli konieczność łączenia kilku kolekcji. Jednocześnie pokazuje jego zaletę: dane klienta i zajęć nie są duplikowane.
+
+### 5.2. Wariant zagnieżdżony: pobranie zajęć razem z uczestnikami
+
+W modelu zagnieżdżonym uczestnicy znajdują się bezpośrednio w dokumencie zajęć.
+
+```javascript
+db.classes_embedded.find(
+  { _id: "class_001" },
+  {
+    name: 1,
+    trainer: 1,
+    participants: 1,
+    reviews: 1
+  }
+);
+```
+
+Komentarz: to zapytanie jest szybkie i proste, bo nie wymaga `$lookup`. Wadą jest to, że dane uczestników są zduplikowane wewnątrz dokumentu zajęć.
+
+### 5.3. Wariant mieszany: sprawdzenie liczby zajętych miejsc
+
+W modelu mieszanym rezerwacje są w osobnej kolekcji. Dzięki temu można łatwo liczyć zajęte miejsca.
+
+```javascript
+db.reservations.countDocuments({
+  classId: "class_001",
+  status: "confirmed"
+});
+```
+
+Komentarz: taka operacja jest dobra dla wariantu mieszanego, ponieważ rezerwacje mogą rosnąć niezależnie od dokumentu zajęć.
+
+### 5.4. Wariant mieszany: lista aktywnych zajęć z oceną średnią
+
+```javascript
+db.classes.aggregate([
+  { $match: { active: true } },
+  {
+    $lookup: {
+      from: "reviews",
+      localField: "_id",
+      foreignField: "classId",
+      as: "reviews"
+    }
+  },
+  {
+    $addFields: {
+      averageRating: { $round: [{ $avg: "$reviews.rating" }, 2] },
+      reviewsCount: { $size: "$reviews" }
+    }
+  },
+  {
+    $project: {
+      name: 1,
+      trainerName: 1,
+      room: 1,
+      schedule: 1,
+      averageRating: 1,
+      reviewsCount: 1
+    }
+  }
+]);
+```
+
+Komentarz: w tym zapytaniu widać kompromis modelu mieszanego. Podstawowe dane zajęć są dostępne od razu, ale średnia ocen wymaga połączenia z kolekcją `reviews`.
+
+### 5.5. Operacja zapisu: rezerwacja miejsca
+
+```javascript
+db.reservations.insertOne({
+  _id: "reservation_004",
+  clientId: "client_003",
+  classId: "class_001",
+  membershipId: "membership_003",
+  status: "confirmed",
+  reservedAt: new Date("2026-05-14T09:00:00Z"),
+  attendance: {
+    checkedIn: false,
+    checkedInAt: null
+  }
+});
+```
+
+Komentarz: w modelu mieszanym dodanie rezerwacji nie zmienia dokumentu zajęć. Jest to korzystne, bo wiele osób może rezerwować miejsca, a dokument `classes` nie zwiększa się przy każdej rezerwacji.
+
+### 5.6. Operacja aktualizacji: oznaczenie obecności
+
+```javascript
+db.reservations.updateOne(
+  { _id: "reservation_004" },
+  {
+    $set: {
+      "attendance.checkedIn": true,
+      "attendance.checkedInAt": new Date("2026-05-14T17:55:00Z")
+    }
+  }
+);
+```
+
+Komentarz: pole `attendance` jest dokumentem zagnieżdżonym w rezerwacji, ponieważ obecność jest częścią informacji o konkretnej rezerwacji.
+
+## 6. Podsumowanie
+
+Najlepszym wariantem dla systemu siłowni jest model mieszany. Pozwala on zachować główne dane w osobnych kolekcjach, a jednocześnie korzystać z dokumentów zagnieżdżonych i tablic tam, gdzie jest to naturalne.
+
+Model referencyjny jest najlepszy dla dużej ilości danych i wysokiej spójności. Model zagnieżdżony jest najlepszy dla szybkiego odczytu jednego kompletnego dokumentu. Model mieszany łączy oba podejścia i dlatego został wybrany jako główna propozycja.
